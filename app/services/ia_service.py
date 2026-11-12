@@ -101,21 +101,34 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
     # Construir el prompt para el modelo
     prompt = construir_prompt_ia(pregunta, fragmentos_documentos, historial)
 
-    # Aquí se integraría la llamada a la API de Gemini cuando se tenga la llave real.
-    # Ejemplo futuro (pendiente de instalar google-generativeai):
-    #
-    # import google.generativeai as genai
-    # genai.configure(api_key=GEMINI_API_KEY)
-    # model = genai.GenerativeModel("gemini-pro")
-    # response = model.generate_content(prompt)
-    # texto_respuesta = response.text
+    # Llamada real a la API de Gemini
+    import google.generativeai as genai
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(prompt)
+    texto_respuesta = response.text
 
-    # Por ahora, modo placeholder: respuesta indicando que falta configurar la API key
-    return {
-        "respuesta": "no indicado",
-        "cita_fuente": "API key de Gemini no configurada",
-        "estado_encontrado": False,
-    }
+    # Intentar parsear como JSON; si falla, devolver no indicado
+    import json
+    try:
+        respuesta_ia = json.loads(texto_respuesta)
+    except (json.JSONDecodeError, ValueError):
+        # Si el modelo no devolvió JSON válido, envolver el texto en el contrato
+        return {
+            "respuesta": texto_respuesta.strip() if texto_respuesta.strip() else "no indicado",
+            "cita_fuente": "modelo de IA (respuesta no estructurada)",
+            "estado_encontrado": False,
+        }
+
+    # Validar que tenga las 3 llaves requeridas
+    if not all(k in respuesta_ia for k in ("respuesta", "cita_fuente", "estado_encontrado")):
+        return {
+            "respuesta": "no indicado",
+            "cita_fuente": "modelo de IA (formato incompleto)",
+            "estado_encontrado": False,
+        }
+
+    return respuesta_ia
 
 
 def validar_contrato_ia(respuesta_ia: Dict) -> Dict:
