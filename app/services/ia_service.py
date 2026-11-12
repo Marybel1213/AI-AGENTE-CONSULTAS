@@ -106,13 +106,42 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
     # Construir el prompt para el modelo
     prompt = construir_prompt_ia(pregunta, fragmentos_documentos, historial)
 
-    # Llamada real a la API de Gemini
+    # Llamada real a la API de Gemini - probar múltiples modelos
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
-        texto_respuesta = response.text
+
+        # Lista de modelos a probar (gratuitos en orden de preferencia)
+        modelos_a_probar = [
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-pro-latest",
+            "gemini-pro",
+            "gemini-1.0-pro",
+        ]
+
+        texto_respuesta = None
+        modelo_usado = None
+
+        for nombre_modelo in modelos_a_probar:
+            try:
+                model = genai.GenerativeModel(nombre_modelo)
+                response = model.generate_content(prompt)
+                texto_respuesta = response.text
+                modelo_usado = nombre_modelo
+                logger.info(f"Modelo funcionando: {nombre_modelo}")
+                break
+            except Exception as e:
+                logger.warning(f"Modelo {nombre_modelo} no disponible: {type(e).__name__}: {str(e)}")
+                continue
+
+        if texto_respuesta is None:
+            logger.error("Ningún modelo de Gemini está disponible para esta API key")
+            return {
+                "respuesta": "Error: Ningún modelo de IA está disponible con tu API key de Gemini. Verifica que tu llave sea válida y tenga acceso a modelos gratuitos en Google AI Studio.",
+                "cita_fuente": "error de API de Gemini",
+                "estado_encontrado": False,
+            }
+
     except Exception as e:
         logger.error(f"Error llamando a la API de Gemini: {type(e).__name__}: {str(e)}")
         return {
