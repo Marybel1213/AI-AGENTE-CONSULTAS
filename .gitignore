@@ -1,0 +1,41 @@
+# Entornos virtuales
+.venv/
+.venv_extract/
+venv/
+
+# Archivos de credenciales
+.env
+.env.real
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribución
+dist/
+build/
+*.egg-info/
+.installed.cfg
+
+# Pruebas
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Instancia Flask
+instance/
+
+# OneDrive / temporales
+*.tmp
+~$*

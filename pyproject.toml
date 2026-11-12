@@ -1,0 +1,25 @@
+[project]
+name = "chatbot-th"
+version = "0.1.0"
+description = "Chatbot de consultas de Talento Humano para Jefes de área"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0.0",
+    "python-dotenv>=1.0.0",
+    "openpyxl>=3.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[dependency-groups]
+dev = [
+    "flask>=3.1.3",
+    "openpyxl>=3.1.5",
+    "pytest>=9.2.0",
+    "python-dotenv>=1.2.4",
+]

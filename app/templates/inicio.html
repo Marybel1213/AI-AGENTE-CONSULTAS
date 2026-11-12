@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="card">
+    <h2 style="color: #1a3a5c; margin-bottom: 20px; font-size: 1.3rem;">Enviar una consulta</h2>
+
+    <form method="POST" action="/chat">
+        <div class="form-group">
+            <label for="pregunta">Tu pregunta:</label>
+            <textarea id="pregunta" name="pregunta" placeholder="Ejemplo: ¿Cuántos días de licencia corresponden por matrimonio?" required></textarea>
+            <p class="placeholder-text">Escribe tu inquietud en lenguaje natural sobre temas de Talento Humano.</p>
+        </div>
+
+        <input type="hidden" name="session_id" value="{{ session_id | default('default') }}">
+
+        <div class="btn-group">
+            <button type="submit" class="btn">Enviar</button>
+            <a href="/nueva-conversacion" class="btn btn-secondary">Nueva conversación</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 style="color: #1a3a5c; margin-bottom: 15px; font-size: 1.1rem;">Sobre esta aplicación</h2>
+    <ul style="list-style: none; padding-left: 0;">
+        <li style="margin-bottom: 8px;">&#9989; Público objetivo: Jefes de área de la empresa</li>
+        <li style="margin-bottom: 8px;">&#9989; Idioma: 100% español</li>
+        <li style="margin-bottom: 8px;">&#9989; Agente: Asistente Experto en Normativa de Talento Humano</li>
+        <li style="margin-bottom: 8px;">&#9989; El agente nunca inventa información; si no encuentra la respuesta, indica "no indicado"</li>
+    </ul>
+</div>
+{% endblock %}
