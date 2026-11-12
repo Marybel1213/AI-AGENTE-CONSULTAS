@@ -4,19 +4,22 @@
 <div class="card">
     <h2 style="color: #1a3a5c; margin-bottom: 20px; font-size: 1.3rem;">Enviar una consulta</h2>
 
-    <form method="POST" action="/chat">
+    <form id="formChat" novalidate>
         <div class="form-group">
             <label for="pregunta">Tu pregunta:</label>
             <textarea id="pregunta" name="pregunta" placeholder="Ejemplo: ¿Cuántos días de licencia corresponden por matrimonio?" required></textarea>
             <p class="placeholder-text">Escribe tu inquietud en lenguaje natural sobre temas de Talento Humano.</p>
         </div>
 
-        <input type="hidden" name="session_id" value="{{ session_id | default('default') }}">
+        <input type="hidden" name="session_id" id="session_id" value="{{ session_id | default('default') }}">
 
         <div class="btn-group">
-            <button type="submit" class="btn">Enviar</button>
+            <button type="submit" id="btnEnviar" class="btn">Enviar</button>
             <a href="/nueva-conversacion" class="btn btn-secondary">Nueva conversación</a>
         </div>
+
+        <div id="mensajeError" class="alert alert-error" style="display: none; margin-top: 15px;"></div>
+        <div id="mensajeCargando" style="display: none; margin-top: 15px; color: #1a3a5c; font-weight: 600;">Procesando tu consulta...</div>
     </form>
 </div>
 
@@ -29,4 +32,65 @@
         <li style="margin-bottom: 8px;">&#9989; El agente nunca inventa información; si no encuentra la respuesta, indica "no indicado"</li>
     </ul>
 </div>
+
+<script>
+document.getElementById('formChat').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const preguntaInput = document.getElementById('pregunta');
+    const btnEnviar = document.getElementById('btnEnviar');
+    const mensajeError = document.getElementById('mensajeError');
+    const mensajeCargando = document.getElementById('mensajeCargando');
+
+    const pregunta = preguntaInput.value.trim();
+
+    if (!pregunta) {
+        mensajeError.textContent = 'Por favor, escribe una pregunta antes de enviar.';
+        mensajeError.style.display = 'block';
+        return;
+    }
+
+    // Ocultar errores previos y mostrar cargando
+    mensajeError.style.display = 'none';
+    mensajeCargando.style.display = 'block';
+    btnEnviar.disabled = true;
+    btnEnviar.textContent = 'Enviando...';
+
+    try {
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                pregunta: pregunta,
+                session_id: document.getElementById('session_id').value
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.estado_encontrado !== undefined) {
+            // Guardar en sessionStorage para la página de resultados
+            sessionStorage.setItem('ultima_respuesta', data.respuesta);
+            sessionStorage.setItem('ultima_cita_fuente', data.cita_fuente);
+            sessionStorage.setItem('ultimo_estado_encontrado', data.estado_encontrado);
+
+            // Redirigir a la página de resultados
+            window.location.href = '/resultados';
+        } else {
+            // Error del servidor
+            mensajeError.textContent = data.error || 'Ocurrió un error al procesar tu pregunta.';
+            mensajeError.style.display = 'block';
+        }
+    } catch (error) {
+        mensajeError.textContent = 'No se pudo conectar con el servidor. Intenta nuevamente.';
+        mensajeError.style.display = 'block';
+    } finally {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = 'Enviar';
+        mensajeCargando.style.display = 'none';
+    }
+});
+</script>
 {% endblock %}
