@@ -110,7 +110,7 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(prompt)
         texto_respuesta = response.text
     except Exception as e:
