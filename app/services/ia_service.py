@@ -1,32 +1,33 @@
 """
-Servicio de integración con el agente de IA (Gemini).
+Servicio de integración con el agente de IA (OpenRouter).
 
-Implementa la integración del agente de IA con las siguientes reglas:
+Implementa la integración del agente de IA a través de OpenRouter con las siguientes reglas:
     - Lee la API key obligatoriamente del archivo .env (nunca hardcodeada).
     - Envía la consulta junto con los fragmentos de documentos relevantes al modelo de IA.
     - Respeta el contrato de salida JSON: respuesta (string), cita_fuente (string), estado_encontrado (boolean).
     - Regla estricta: el agente NUNCA inventa información. Si la respuesta no figura en los documentos, escribe "no indicado".
 
-Nota: Se agrega la librería google-generativeai cuando se disponga de la API key real.
-Mientras tanto, el servicio funciona en modo placeholder listo para integrarse.
+OpenRouter es compatible con el formato de OpenAI, por lo que se usa la librería `openai`
+con base_url apuntando a https://openrouter.ai/api/v1
 """
 
 import os
 import json
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 logger = logging.getLogger(__name__)
 
 
 def construir_prompt_ia(pregunta: str, fragmentos_documentos: List[str], historial: List[dict]) -> str:
     """
-    Construye el prompt que se enviará al agente de IA (Gemini).
+    Construye el prompt que se enviará al agente de IA a través de OpenRouter.
 
     Incluye instrucciones estrictas para que el agente no invente información
     y devuelva siempre el contrato JSON con las 3 llaves requeridas.
@@ -78,7 +79,7 @@ Responde SOLO con el JSON, sin texto adicional antes o después."""
 
 def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial: List[dict]) -> Dict:
     """
-    Envía la consulta al agente de IA (Gemini) y devuelve el resultado en formato JSON.
+    Envía la consulta al agente de IA a través de OpenRouter y devuelve el resultado en formato JSON.
 
     Argumentos:
         pregunta: texto de la pregunta del usuario.
@@ -95,10 +96,10 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
         - El agente NUNCA inventa información.
     """
     # Validar que exista API key
-    if not GEMINI_API_KEY or GEMINI_API_KEY == "tu_api_key_aqui":
-        logger.error("GEMINI_API_KEY no configurada en variables de entorno")
+    if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "tu_api_key_aqui":
+        logger.error("OPENROUTER_API_KEY no configurada en variables de entorno")
         return {
-            "respuesta": "Error: No se configuró la API key de Gemini. Agrega GEMINI_API_KEY en las variables de entorno de Render.",
+            "respuesta": "Error: No se configuró la API key de OpenRouter. Agrega OPENROUTER_API_KEY en las variables de entorno de Render.",
             "cita_fuente": "configuración pendiente",
             "estado_encontrado": False,
         }
@@ -106,17 +107,18 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
     # Construir el prompt para el modelo
     prompt = construir_prompt_ia(pregunta, fragmentos_documentos, historial)
 
-    # Llamada real a la API de Gemini - probar múltiples modelos
+    # Llamada real a la API de OpenRouter (compatible con formato OpenAI)
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
+        client = OpenAI(
+            api_key=OPENROUTER_API_KEY,
+            base_url="https://openrouter.ai/api/v1",
+        )
 
-        # Lista de modelos a probar (gratuitos en orden de preferencia)
+        # Lista de modelos gratuitos a probar en OpenRouter
         modelos_a_probar = [
-            "gemini-1.5-flash-latest",
-            "gemini-1.5-pro-latest",
-            "gemini-pro",
-            "gemini-1.0-pro",
+            "google/gemini-flash-1.5",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "openrouter/auto",
         ]
 
         texto_respuesta = None
@@ -124,45 +126,51 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
 
         for nombre_modelo in modelos_a_probar:
             try:
-                model = genai.GenerativeModel(nombre_modelo)
-                response = model.generate_content(prompt)
-                texto_respuesta = response.text
+                response = client.chat.completions.create(
+                    model=nombre_modelo,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=1000,
+                )
+                texto_respuesta = response.choices[0].message.content
                 modelo_usado = nombre_modelo
-                logger.info(f"Modelo funcionando: {nombre_modelo}")
+                logger.info(f"Modelo OpenRouter funcionando: {nombre_modelo}")
                 break
             except Exception as e:
                 logger.warning(f"Modelo {nombre_modelo} no disponible: {type(e).__name__}: {str(e)}")
                 continue
 
         if texto_respuesta is None:
-            logger.error("Ningún modelo de Gemini está disponible para esta API key")
+            logger.error("Ningún modelo de OpenRouter está disponible para esta API key")
             return {
-                "respuesta": "Error: Ningún modelo de IA está disponible con tu API key de Gemini. Verifica que tu llave sea válida y tenga acceso a modelos gratuitos en Google AI Studio.",
-                "cita_fuente": "error de API de Gemini",
+                "respuesta": "Error: Ningún modelo de IA está disponible con tu API key de OpenRouter. Verifica que tu llave sea válida y tenga acceso a modelos gratuitos en OpenRouter.",
+                "cita_fuente": "error de API de OpenRouter",
                 "estado_encontrado": False,
             }
 
     except Exception as e:
-        logger.error(f"Error llamando a la API de Gemini: {type(e).__name__}: {str(e)}")
+        logger.error(f"Error llamando a la API de OpenRouter: {type(e).__name__}: {str(e)}")
         return {
-            "respuesta": f"Error al contactar al modelo de IA: {type(e).__name__}. Verifica que GEMINI_API_KEY sea válida y tenga cuota disponible.",
-            "cita_fuente": "error de API de Gemini",
+            "respuesta": f"Error al contactar al modelo de IA: {type(e).__name__}. Verifica que OPENROUTER_API_KEY sea válida y tenga cuota disponible.",
+            "cita_fuente": "error de API de OpenRouter",
             "estado_encontrado": False,
         }
 
     if not texto_respuesta or not texto_respuesta.strip():
-        logger.warning("Gemini devolvió respuesta vacía")
+        logger.warning("OpenRouter devolvió respuesta vacía")
         return {
             "respuesta": "no indicado",
             "cita_fuente": "modelo de IA (respuesta vacía)",
             "estado_encontrado": False,
         }
 
-    # Intentar parsear como JSON; si falla, devolver no indicado
+    # Intentar parsear como JSON; si falla, devolver texto envuelto en el contrato
     try:
         respuesta_ia = json.loads(texto_respuesta)
     except (json.JSONDecodeError, ValueError) as e:
-        logger.warning(f"Gemini no devolvió JSON válido: {e}")
+        logger.warning(f"OpenRouter no devolvió JSON válido: {e}")
         return {
             "respuesta": texto_respuesta.strip() if texto_respuesta.strip() else "no indicado",
             "cita_fuente": "modelo de IA (respuesta no estructurada)",
@@ -171,7 +179,7 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
 
     # Validar que tenga las 3 llaves requeridas
     if not all(k in respuesta_ia for k in ("respuesta", "cita_fuente", "estado_encontrado")):
-        logger.warning(f"Gemini devolvió JSON incompleto: {respuesta_ia.keys()}")
+        logger.warning(f"OpenRouter devolvió JSON incompleto: {respuesta_ia.keys()}")
         return {
             "respuesta": "no indicado",
             "cita_fuente": "modelo de IA (formato incompleto)",
