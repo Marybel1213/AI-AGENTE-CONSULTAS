@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="card" style="max-width: 400px; margin: 0 auto;">
+    <h2 style="color: #1a3a5c; margin-bottom: 20px; text-align: center;">Iniciar sesión</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+        <div class="form-group">
+            <label for="usuario">Usuario:</label>
+            <input type="text" id="usuario" name="usuario" required autofocus>
+        </div>
+
+        <div class="form-group">
+            <label for="clave">Contraseña:</label>
+            <input type="password" id="clave" name="clave" required>
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%;">Ingresar</button>
+    </form>
+
+    <p style="margin-top: 20px; text-align: center; font-size: 0.9rem; color: #6c757d;">
+        Ingresa tus credenciales para acceder al chatbot de Talento Humano.
+    </p>
+</div>
+{% endblock %}

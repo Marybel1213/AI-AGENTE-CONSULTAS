@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from dotenv import load_dotenv
 
 from app.controllers.chat_controller import chat_bp
+from app.controllers.auth_controller import auth_bp
 from app.services.conversation_service import (
     preparar_contexto_ia,
     obtener_historial,
@@ -19,8 +20,23 @@ def create_app():
     # Clave secreta para sesiones de Flask (requerida por session)
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-cambiar-en-produccion")
 
-    # Registrar blueprint del chat (endpoint POST /chat)
+    # Registrar blueprints
     app.register_blueprint(chat_bp)
+    app.register_blueprint(auth_bp)
+
+    # Middleware: proteger todas las rutas excepto login, salir, health y estáticos
+    @app.before_request
+    def requerir_autenticacion():
+        rutas_publicas = [
+            "auth.login",
+            "auth.salir",
+            "static",
+        ]
+        # Permitir health sin autenticación (para Render)
+        if request.endpoint == "health":
+            return None
+        if request.endpoint not in rutas_publicas and not session.get("usuario_autenticado"):
+            return redirect(url_for("auth.login"))
 
     @app.route("/")
     def index():
@@ -34,6 +50,7 @@ def create_app():
             session_id=session_id,
             historial=historial,
             error_lectura=error_lectura,
+            usuario_nombre=session.get("usuario_nombre", "Usuario"),
         )
 
     @app.route("/resultados")
@@ -71,6 +88,7 @@ def create_app():
             historial=historial,
             session_id=session_id,
             error_lectura=error_lectura,
+            usuario_nombre=session.get("usuario_nombre", "Usuario"),
         )
 
     @app.route("/nueva-conversacion")
