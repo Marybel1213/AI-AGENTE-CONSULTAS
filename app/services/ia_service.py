@@ -12,12 +12,16 @@ Mientras tanto, el servicio funciona en modo placeholder listo para integrarse.
 """
 
 import os
+import json
+import logging
 from typing import Dict, List
 from dotenv import load_dotenv
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+logger = logging.getLogger(__name__)
 
 
 def construir_prompt_ia(pregunta: str, fragmentos_documentos: List[str], historial: List[dict]) -> str:
@@ -92,9 +96,10 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
     """
     # Validar que exista API key
     if not GEMINI_API_KEY or GEMINI_API_KEY == "tu_api_key_aqui":
+        logger.error("GEMINI_API_KEY no configurada en variables de entorno")
         return {
-            "respuesta": "no indicado",
-            "cita_fuente": "configuracion pendiente",
+            "respuesta": "Error: No se configuró la API key de Gemini. Agrega GEMINI_API_KEY en las variables de entorno de Render.",
+            "cita_fuente": "configuración pendiente",
             "estado_encontrado": False,
         }
 
@@ -102,18 +107,33 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
     prompt = construir_prompt_ia(pregunta, fragmentos_documentos, historial)
 
     # Llamada real a la API de Gemini
-    import google.generativeai as genai
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
-    texto_respuesta = response.text
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(prompt)
+        texto_respuesta = response.text
+    except Exception as e:
+        logger.error(f"Error llamando a la API de Gemini: {type(e).__name__}: {str(e)}")
+        return {
+            "respuesta": f"Error al contactar al modelo de IA: {type(e).__name__}. Verifica que GEMINI_API_KEY sea válida y tenga cuota disponible.",
+            "cita_fuente": "error de API de Gemini",
+            "estado_encontrado": False,
+        }
+
+    if not texto_respuesta or not texto_respuesta.strip():
+        logger.warning("Gemini devolvió respuesta vacía")
+        return {
+            "respuesta": "no indicado",
+            "cita_fuente": "modelo de IA (respuesta vacía)",
+            "estado_encontrado": False,
+        }
 
     # Intentar parsear como JSON; si falla, devolver no indicado
-    import json
     try:
         respuesta_ia = json.loads(texto_respuesta)
-    except (json.JSONDecodeError, ValueError):
-        # Si el modelo no devolvió JSON válido, envolver el texto en el contrato
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning(f"Gemini no devolvió JSON válido: {e}")
         return {
             "respuesta": texto_respuesta.strip() if texto_respuesta.strip() else "no indicado",
             "cita_fuente": "modelo de IA (respuesta no estructurada)",
@@ -122,6 +142,7 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
 
     # Validar que tenga las 3 llaves requeridas
     if not all(k in respuesta_ia for k in ("respuesta", "cita_fuente", "estado_encontrado")):
+        logger.warning(f"Gemini devolvió JSON incompleto: {respuesta_ia.keys()}")
         return {
             "respuesta": "no indicado",
             "cita_fuente": "modelo de IA (formato incompleto)",
