@@ -1,4 +1,12 @@
 import os
+import logging
+
+# Configurar logging para que Render muestre los mensajes de la app
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+
 from app import create_app
 
 application = create_app()

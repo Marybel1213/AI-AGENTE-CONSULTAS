@@ -11,9 +11,14 @@ Reglas de negocio:
     - Si las credenciales son incorrectas, muestra mensaje de error.
 """
 
+import os
+import logging
+
 from flask import Blueprint, request, redirect, url_for, render_template, session, flash
 
 auth_bp = Blueprint("auth", __name__)
+
+logger = logging.getLogger(__name__)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -38,14 +43,24 @@ def login():
         usuario = request.form.get("usuario", "").strip()
         clave = request.form.get("clave", "").strip()
 
-        usuario_valido = __import__("os").getenv("APP_USUARIO", "")
-        clave_valida = __import__("os").getenv("APP_CLAVE", "")
+        usuario_valido = os.getenv("APP_USUARIO", "")
+        clave_valida = os.getenv("APP_CLAVE", "")
 
-        if usuario == usuario_valido and clave == clave_valida:
+        # Diagnóstico: nunca muestra la contraseña, solo si las variables existen
+        logger.info(
+            f"[LOGIN] Intento de login. "
+            f"APP_USUARIO definida: {'sí' if usuario_valido else 'NO'} | "
+            f"APP_CLAVE definida: {'sí' if clave_valida else 'NO'} | "
+            f"Coincide usuario: {usuario == usuario_valido if usuario_valido else 'N/A'}"
+        )
+
+        if usuario_valido and clave_valida and usuario == usuario_valido and clave == clave_valida:
+            logger.info(f"[LOGIN] Login exitoso para usuario: {usuario}")
             session["usuario_autenticado"] = True
             session["usuario_nombre"] = usuario
             return redirect(url_for("index"))
         else:
+            logger.warning("[LOGIN] Credenciales rechazadas")
             error = "Usuario o contraseña incorrectos"
 
     return render_template("login.html", error=error)
