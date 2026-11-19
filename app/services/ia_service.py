@@ -115,10 +115,12 @@ def llamar_agente_ia(pregunta: str, fragmentos_documentos: List[str], historial:
         )
 
         # Lista de modelos gratuitos a probar en OpenRouter
+        # (verificados el 18/11/2026 en openrouter.ai/models)
         modelos_a_probar = [
-            "google/gemini-flash-1.5",
-            "meta-llama/llama-3.1-8b-instruct:free",
             "openrouter/auto",
+            "google/gemma-4-31b-it:free",
+            "nvidia/nemotron-3.5-lightning:free",
+            "inclusionai/ling-3.2-flash:free",
         ]
 
         texto_respuesta = None
